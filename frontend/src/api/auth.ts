@@ -4,7 +4,7 @@ export interface UserOut {
   id: number
   email: string
   username: string
-  role: 'admin' | 'user'
+  role: 'admin' | 'landlord' | 'tenant'
   is_approved: boolean
   is_active: boolean
   avatar_url: string | null
@@ -41,7 +41,7 @@ export const uploadAvatar = (file: File) => {
 export interface UserUpdate {
   is_approved?: boolean
   is_active?: boolean
-  role?: 'admin' | 'user'
+  role?: 'admin' | 'landlord' | 'tenant'
 }
 
 export const adminListUsers = () =>

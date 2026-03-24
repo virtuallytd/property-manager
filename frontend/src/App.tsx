@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
+import Properties from './pages/Properties'
 import SettingsPage from './pages/Settings'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -26,6 +27,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/properties" element={<Properties />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route
             path="/admin"

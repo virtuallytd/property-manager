@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
+  Building2,
   LayoutDashboard,
   Zap,
   Settings,
@@ -28,20 +29,28 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 px-3 pt-2">
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) =>
-            clsx(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-white/10 text-white'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
-            )
-          }
-        >
-          <LayoutDashboard size={16} />
-          Dashboard
-        </NavLink>
+        {[
+          { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          ...(user?.role === 'landlord' || user?.role === 'admin'
+            ? [{ to: '/properties', label: 'Properties', icon: Building2 }]
+            : []),
+        ].map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-white/10 text-white'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+              )
+            }
+          >
+            <Icon size={16} />
+            {label}
+          </NavLink>
+        ))}
       </nav>
 
       {/* Bottom nav */}

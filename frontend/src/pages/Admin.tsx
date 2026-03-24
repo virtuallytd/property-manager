@@ -131,7 +131,7 @@ function UsersTab() {
   })
 
   const promoteAdminMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: number; role: 'admin' | 'user' }) =>
+    mutationFn: ({ userId, role }: { userId: number; role: 'admin' | 'landlord' | 'tenant' }) =>
       adminUpdateUser(userId, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -228,7 +228,7 @@ interface UserRowProps {
   onApprove: () => void
   onReject: () => void
   onToggleActive: (active: boolean) => void
-  onToggleRole: (role: 'admin' | 'user') => void
+  onToggleRole: (role: 'admin' | 'landlord' | 'tenant') => void
   onDelete: () => void
   pending?: boolean
 }
@@ -245,6 +245,12 @@ function UserRow({ user, currentUserId, onApprove, onReject: _onReject, onToggle
           <span className="text-sm font-medium text-slate-900">@{user.username}</span>
           {user.role === 'admin' && (
             <span className="badge bg-violet-100 text-violet-700">Admin</span>
+          )}
+          {user.role === 'landlord' && (
+            <span className="badge bg-blue-100 text-blue-700">Landlord</span>
+          )}
+          {user.role === 'tenant' && (
+            <span className="badge bg-green-100 text-green-700">Tenant</span>
           )}
           {!user.is_active && (
             <span className="badge bg-slate-100 text-slate-500">Disabled</span>
@@ -291,7 +297,7 @@ function UserRow({ user, currentUserId, onApprove, onReject: _onReject, onToggle
                   {user.is_active ? 'Disable' : 'Enable'}
                 </button>
                 <button
-                  onClick={() => onToggleRole(user.role === 'admin' ? 'user' : 'admin')}
+                  onClick={() => onToggleRole(user.role === 'admin' ? 'landlord' : 'admin')}
                   title={user.role === 'admin' ? 'Remove admin' : 'Make admin'}
                   className="btn-secondary px-2 py-1 text-xs"
                 >

@@ -41,7 +41,7 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
         email=body.email,
         username=body.username,
         hashed_password=hash_password(body.password),
-        role=UserRole.USER,
+        role=UserRole.LANDLORD,
         is_approved=False,
         is_active=True,
     )

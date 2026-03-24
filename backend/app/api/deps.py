@@ -57,3 +57,17 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
+
+
+def get_current_landlord(current_user: User = Depends(get_current_user)) -> User:
+    """Require the current user to be a landlord."""
+    if current_user.role != UserRole.LANDLORD:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Landlord access required")
+    return current_user
+
+
+def get_current_tenant(current_user: User = Depends(get_current_user)) -> User:
+    """Require the current user to be a tenant."""
+    if current_user.role != UserRole.TENANT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access required")
+    return current_user
