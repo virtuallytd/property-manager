@@ -1,0 +1,160 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { CheckCircle, Zap } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
+import axios from 'axios'
+
+const schema = z.object({
+  email: z.string().email('Enter a valid email'),
+  username: z.string().min(3, 'Username must be at least 3 characters').max(50),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
+type FormData = z.infer<typeof schema>
+
+export default function Register() {
+  const { register: registerUser } = useAuth()
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({ resolver: zodResolver(schema) })
+
+  const onSubmit = async (data: FormData) => {
+    setServerError(null)
+    try {
+      await registerUser(data.email, data.username, data.password)
+      setSuccess(true)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status
+        const detail = err.response?.data?.detail
+        if (status === 403) {
+          setServerError('Registration is currently disabled. Please contact an administrator.')
+        } else if (status === 400) {
+          setServerError(detail || 'Registration failed')
+        } else {
+          setServerError(detail || 'Registration failed. Please try again.')
+        }
+      } else {
+        setServerError('An unexpected error occurred')
+      }
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-sm">
+          <div className="card p-8 text-center">
+            <div className="mb-4 flex justify-center">
+              <CheckCircle size={48} className="text-green-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Account Created</h2>
+            <p className="text-sm text-slate-500 mb-6">
+              Your account is awaiting administrator approval. You'll be able to log in once it's been approved.
+            </p>
+            <Link to="/login" className="btn-primary w-full justify-center">
+              Back to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="mb-8 flex flex-col items-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600 mb-3">
+            <Zap size={24} className="text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Property Manager</h1>
+          <p className="mt-1 text-sm text-slate-500">Create a new account</p>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="card p-6 space-y-4">
+          {serverError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {serverError}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              className="input w-full"
+              placeholder="you@example.com"
+              {...register('email')}
+            />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1">
+              Username
+            </label>
+            <input
+              id="username"
+              type="text"
+              autoComplete="username"
+              className="input w-full"
+              placeholder="johndoe"
+              {...register('username')}
+            />
+            {errors.username && (
+              <p className="mt-1 text-xs text-red-600">{errors.username.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              className="input w-full"
+              placeholder="••••••••"
+              {...register('password')}
+            />
+            {errors.password && (
+              <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="btn-primary w-full justify-center"
+          >
+            {isSubmitting ? 'Creating account…' : 'Create Account'}
+          </button>
+        </form>
+
+        <p className="mt-4 text-center text-sm text-slate-500">
+          Already have an account?{' '}
+          <Link to="/login" className="text-violet-600 hover:text-violet-700 font-medium">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
