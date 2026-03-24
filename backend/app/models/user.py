@@ -28,5 +28,6 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     properties = relationship("Property", back_populates="landlord")
+    tenancies = relationship("Tenancy", back_populates="tenant")
 
 

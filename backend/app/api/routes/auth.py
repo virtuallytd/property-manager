@@ -1,6 +1,7 @@
 """Authentication routes: register, login, me."""
 import os
 import uuid
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,9 @@ from app.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models.settings import AppSetting, DEFAULTS
+from app.models.tenancy import PropertyInvite, Tenancy
 from app.models.user import User, UserRole
+from app.schemas.tenancy import InviteInfoOut, RegisterByInvite
 from app.schemas.user import LoginRequest, TokenResponse, UserCreate, UserOut, UserProfileUpdate
 
 router = APIRouter()
@@ -49,6 +52,63 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/invite/{token}", response_model=InviteInfoOut)
+def get_invite_info(token: str, db: Session = Depends(get_db)):
+    invite = db.query(PropertyInvite).filter(PropertyInvite.token == token).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.used_at:
+        raise HTTPException(status_code=410, detail="This invite has already been used")
+    if invite.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="This invite has expired")
+    prop = invite.property
+    landlord = invite.creator
+    return InviteInfoOut(
+        property_name=prop.name,
+        property_address=f"{prop.address_line1}, {prop.city}, {prop.postcode}",
+        landlord_username=landlord.username,
+        token=token,
+    )
+
+
+@router.post("/register-invite", response_model=TokenResponse, status_code=201)
+def register_by_invite(body: RegisterByInvite, db: Session = Depends(get_db)):
+    invite = db.query(PropertyInvite).filter(PropertyInvite.token == body.token).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.used_at:
+        raise HTTPException(status_code=410, detail="This invite has already been used")
+    if invite.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="This invite has expired")
+
+    if db.query(User).filter(User.email == body.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    if db.query(User).filter(User.username == body.username).first():
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    user = User(
+        email=body.email,
+        username=body.username,
+        hashed_password=hash_password(body.password),
+        role=UserRole.TENANT,
+        is_approved=True,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    tenancy = Tenancy(property_id=invite.property_id, tenant_id=user.id)
+    db.add(tenancy)
+
+    invite.used_at = datetime.utcnow()
+    invite.used_by_id = user.id
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token({"sub": str(user.id)})
+    return TokenResponse(access_token=token, token_type="bearer", user=UserOut.from_user(user))
 
 
 @router.post("/login", response_model=TokenResponse)

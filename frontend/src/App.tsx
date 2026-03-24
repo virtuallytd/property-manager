@@ -4,6 +4,8 @@ import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
 import Properties from './pages/Properties'
+import PropertyDetail from './pages/PropertyDetail'
+import InviteRegister from './pages/InviteRegister'
 import SettingsPage from './pages/Settings'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -16,6 +18,7 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/invite/:token" element={<InviteRegister />} />
 
         {/* Protected routes */}
         <Route
@@ -28,6 +31,7 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/properties" element={<Properties />} />
+          <Route path="/properties/:id" element={<PropertyDetail />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route
             path="/admin"

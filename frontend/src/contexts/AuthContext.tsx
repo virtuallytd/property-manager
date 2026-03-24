@@ -7,6 +7,7 @@ interface AuthContextValue {
   token: string | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
+  loginWithToken: (token: string, user: UserOut) => void
   logout: () => void
   register: (email: string, username: string, password: string) => Promise<void>
   refreshUser: () => Promise<void>
@@ -17,6 +18,7 @@ export const AuthContext = createContext<AuthContextValue>({
   token: null,
   isLoading: true,
   login: async () => {},
+  loginWithToken: () => {},
   logout: () => {},
   register: async () => {},
   refreshUser: async () => {},
@@ -59,6 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
   }, [queryClient])
 
+  const loginWithToken = useCallback((accessToken: string, userData: UserOut) => {
+    localStorage.setItem('token', accessToken)
+    setToken(accessToken)
+    setUser(userData)
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem('token')
     setToken(null)
@@ -78,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, register, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, loginWithToken, logout, register, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

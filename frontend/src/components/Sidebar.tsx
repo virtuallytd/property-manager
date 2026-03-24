@@ -31,9 +31,7 @@ export default function Sidebar() {
       <nav className="flex-1 space-y-0.5 px-3 pt-2">
         {[
           { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          ...(user?.role === 'landlord' || user?.role === 'admin'
-            ? [{ to: '/properties', label: 'Properties', icon: Building2 }]
-            : []),
+          { to: '/properties', label: 'Properties', icon: Building2 },
         ].map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -105,8 +103,8 @@ export default function Sidebar() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">@{user.username}</p>
               <div className="flex items-center gap-1 mt-0.5">
-                <span className={`text-xs ${user.role === 'admin' ? 'text-violet-400' : 'text-slate-500'}`}>
-                  {user.role === 'admin' ? 'Admin' : 'User'}
+                <span className={`text-xs ${user.role === 'admin' ? 'text-violet-400' : user.role === 'tenant' ? 'text-blue-400' : 'text-slate-500'}`}>
+                  {user.role === 'admin' ? 'Admin' : user.role === 'tenant' ? 'Tenant' : 'Landlord'}
                 </span>
               </div>
             </div>

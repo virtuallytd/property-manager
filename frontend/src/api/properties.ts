@@ -29,6 +29,9 @@ export interface PropertyCreate {
 export const listProperties = () =>
   api.get<Property[]>('/properties').then(r => r.data)
 
+export const getProperty = (id: number) =>
+  api.get<Property>(`/properties/${id}`).then(r => r.data)
+
 export const createProperty = (data: PropertyCreate) =>
   api.post<Property>('/properties', data).then(r => r.data)
 

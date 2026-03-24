@@ -29,3 +29,5 @@ class Property(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     landlord = relationship("User", back_populates="properties")
+    tenancies = relationship("Tenancy", back_populates="property", cascade="all, delete-orphan")
+    invites = relationship("PropertyInvite", back_populates="property", cascade="all, delete-orphan")

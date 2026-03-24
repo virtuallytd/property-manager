@@ -2,6 +2,7 @@ from app.models.base import Base
 from app.models.user import User, UserRole
 from app.models.settings import AppSetting
 from app.models.property import Property, PropertyType
+from app.models.tenancy import Tenancy, PropertyInvite
 
 __all__ = [
     "Base",
@@ -10,4 +11,6 @@ __all__ = [
     "AppSetting",
     "Property",
     "PropertyType",
+    "Tenancy",
+    "PropertyInvite",
 ]
