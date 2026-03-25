@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.property import Property
 from app.models.tenancy import Tenancy
 from sqlalchemy import or_
-from app.models.ticket import Ticket, TicketComment, TicketRead, TicketType, VisitResponse
+from app.models.ticket import Ticket, TicketComment, TicketRead, TicketStatus, TicketType, VisitResponse
 from app.models.user import User, UserRole
 from app.schemas.ticket import (
     AuthorOut,
@@ -58,12 +58,14 @@ def _ticket_list_out(t: Ticket, user_id: int, db: Session) -> TicketListOut:
     return TicketListOut(
         id=t.id,
         property_id=t.property_id,
+        property_name=t.property.name,
         created_by=t.created_by,
         creator=_author_out(t.creator),
         title=t.title,
         ticket_type=t.ticket_type,
         category=t.category,
         status=t.status,
+        priority=t.priority,
         proposed_date=t.proposed_date,
         visit_response=t.visit_response,
         created_at=t.created_at,
@@ -76,6 +78,7 @@ def _ticket_out(t: Ticket) -> TicketOut:
     return TicketOut(
         id=t.id,
         property_id=t.property_id,
+        property_name=t.property.name,
         created_by=t.created_by,
         creator=_author_out(t.creator),
         title=t.title,
@@ -83,6 +86,7 @@ def _ticket_out(t: Ticket) -> TicketOut:
         ticket_type=t.ticket_type,
         category=t.category,
         status=t.status,
+        priority=t.priority,
         proposed_date=t.proposed_date,
         visit_response=t.visit_response,
         visit_suggested_date=t.visit_suggested_date,
@@ -142,17 +146,23 @@ def unread_count(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role == UserRole.ADMIN:
-        tickets = db.query(Ticket).all()
+        tickets = db.query(Ticket).filter(Ticket.status != TicketStatus.CLOSED).all()
     elif current_user.role == UserRole.LANDLORD:
         property_ids = [p.id for p in db.query(Property).filter(Property.landlord_id == current_user.id).all()]
-        tickets = db.query(Ticket).filter(Ticket.property_id.in_(property_ids)).all()
+        tickets = db.query(Ticket).filter(
+            Ticket.property_id.in_(property_ids),
+            Ticket.status != TicketStatus.CLOSED,
+        ).all()
     else:
         tickets = (
             db.query(Ticket)
-            .filter(or_(
-                Ticket.created_by == current_user.id,
-                Ticket.assigned_to_tenant_id == current_user.id,
-            ))
+            .filter(
+                or_(
+                    Ticket.created_by == current_user.id,
+                    Ticket.assigned_to_tenant_id == current_user.id,
+                ),
+                Ticket.status != TicketStatus.CLOSED,
+            )
             .all()
         )
 
@@ -243,6 +253,7 @@ def create_ticket(
         description=body.description,
         ticket_type=body.ticket_type,
         category=body.category,
+        priority=body.priority,
         assigned_to_tenant_id=body.tenant_id if body.ticket_type == TicketType.VISIT_REQUEST else None,
         proposed_date=proposed_date,
         visit_response=VisitResponse.PENDING if body.ticket_type == TicketType.VISIT_REQUEST else None,
@@ -290,7 +301,15 @@ def update_ticket_status(
     ticket = _get_ticket_or_403(ticket_id, current_user, db)
 
     if current_user.role == UserRole.TENANT:
-        raise HTTPException(status_code=403, detail="Only landlords can change ticket status")
+        # Tenants can only confirm closure of a resolved ticket
+        if not (ticket.status == TicketStatus.RESOLVED and body.status == TicketStatus.CLOSED):
+            raise HTTPException(status_code=403, detail="Only landlords can change ticket status")
+        # Add system comment confirming closure
+        db.add(TicketComment(
+            ticket_id=ticket.id,
+            author_id=current_user.id,
+            body="Tenant confirmed the issue is resolved and closed the ticket.",
+        ))
 
     ticket.status = body.status
     ticket.updated_at = datetime.utcnow()
@@ -335,8 +354,12 @@ def add_comment(
 ):
     ticket = _get_ticket_or_403(ticket_id, current_user, db)
 
-    if ticket.status.value == "closed":
+    if ticket.status == TicketStatus.CLOSED:
         raise HTTPException(status_code=400, detail="Cannot comment on a closed ticket")
+
+    # If a tenant comments on a resolved ticket, revert it to in_progress
+    if current_user.role == UserRole.TENANT and ticket.status == TicketStatus.RESOLVED:
+        ticket.status = TicketStatus.IN_PROGRESS
 
     comment = TicketComment(
         ticket_id=ticket.id,

@@ -2,10 +2,13 @@ import { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Send } from 'lucide-react'
+import { ArrowLeft, Building2, Send } from 'lucide-react'
 import {
+  type TicketStatus,
   type VisitResponse,
   CATEGORY_LABELS,
+  PRIORITY_LABELS,
+  STATUS_LABELS,
   VISIT_RESPONSE_LABELS,
   addComment,
   getTicket,
@@ -17,9 +20,19 @@ import { AuthContext } from '../contexts/AuthContext'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STATUS_COLOURS = {
+const STATUS_COLOURS: Record<TicketStatus, string> = {
   open: 'bg-green-100 text-green-700',
+  in_progress: 'bg-blue-100 text-blue-700',
+  awaiting_tenant: 'bg-amber-100 text-amber-700',
+  resolved: 'bg-violet-100 text-violet-700',
   closed: 'bg-slate-100 text-slate-500',
+}
+
+const PRIORITY_COLOURS = {
+  low: 'bg-slate-100 text-slate-500',
+  medium: 'bg-blue-50 text-blue-600',
+  high: 'bg-amber-100 text-amber-700',
+  urgent: 'bg-red-100 text-red-600',
 }
 
 const VISIT_RESPONSE_COLOURS = {
@@ -34,8 +47,10 @@ function formatDate(iso: string) {
 }
 
 function formatDateShort(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
+
+const LANDLORD_STATUSES: TicketStatus[] = ['open', 'in_progress', 'awaiting_tenant', 'resolved', 'closed']
 
 // ─── Visit response panel ─────────────────────────────────────────────────────
 
@@ -87,7 +102,7 @@ function VisitResponsePanel({ ticketId, currentResponse }: { ticketId: number; c
             onChange={e => setSuggestedDate(e.target.value)}
           />
           <button
-            className="btn-primary"
+            className="btn btn-primary"
             onClick={() => mutation.mutate('rescheduled')}
             disabled={mutation.isPending || !suggestedDate}
           >
@@ -114,7 +129,6 @@ export default function TicketDetail() {
     queryFn: () => getTicket(ticketId),
   })
 
-  // Auto-mark as read when the ticket loads, and invalidate the list + count
   useEffect(() => {
     if (ticket) {
       markTicketRead(ticketId).then(() => {
@@ -125,13 +139,13 @@ export default function TicketDetail() {
   }, [ticket?.id])
 
   const statusMutation = useMutation({
-    mutationFn: (status: 'open' | 'closed') => updateTicketStatus(ticketId, status),
+    mutationFn: (status: TicketStatus) => updateTicketStatus(ticketId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] })
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
-      toast.success('Ticket updated')
+      toast.success('Status updated')
     },
-    onError: () => toast.error('Failed to update ticket'),
+    onError: () => toast.error('Failed to update status'),
   })
 
   const commentMutation = useMutation({
@@ -157,6 +171,7 @@ export default function TicketDetail() {
   const isLandlordOrAdmin = user?.role === 'landlord' || user?.role === 'admin'
   const isTenant = user?.role === 'tenant'
   const isVisit = ticket.ticket_type === 'visit_request'
+  const isClosed = ticket.status === 'closed'
 
   return (
     <div className="p-8 max-w-3xl space-y-6">
@@ -172,21 +187,31 @@ export default function TicketDetail() {
       {/* Header card */}
       <div className="card p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <h1 className="text-lg font-semibold text-slate-900">{ticket.title}</h1>
-            <p className="text-xs text-slate-400">
-              Raised by @{ticket.creator.username} · {formatDateShort(ticket.created_at)}
-              {!isVisit && ticket.category && ` · ${CATEGORY_LABELS[ticket.category]}`}
-            </p>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Building2 size={12} />
+              <span>{ticket.property_name}</span>
+              <span>·</span>
+              <span>Raised by @{ticket.creator.username}</span>
+              <span>·</span>
+              <span>{formatDateShort(ticket.created_at)}</span>
+              {!isVisit && ticket.category && (
+                <><span>·</span><span>{CATEGORY_LABELS[ticket.category]}</span></>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${PRIORITY_COLOURS[ticket.priority]}`}>
+              {PRIORITY_LABELS[ticket.priority]}
+            </span>
             {isVisit && ticket.visit_response && (
               <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${VISIT_RESPONSE_COLOURS[ticket.visit_response]}`}>
                 {VISIT_RESPONSE_LABELS[ticket.visit_response]}
               </span>
             )}
             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLOURS[ticket.status]}`}>
-              {ticket.status === 'open' ? 'Open' : 'Closed'}
+              {STATUS_LABELS[ticket.status]}
             </span>
           </div>
         </div>
@@ -209,29 +234,39 @@ export default function TicketDetail() {
           <p className="text-sm text-slate-600 whitespace-pre-wrap">{ticket.description}</p>
         )}
 
-        {/* Landlord actions */}
+        {/* Landlord status control */}
         {isLandlordOrAdmin && (
-          <div className="flex gap-2 pt-1 border-t border-slate-100">
-            {ticket.status === 'open' ? (
-              <button
-                className="btn text-sm"
-                onClick={() => statusMutation.mutate('closed')}
-                disabled={statusMutation.isPending}
-              >
-                Close ticket
-              </button>
-            ) : (
-              <button
-                className="btn text-sm"
-                onClick={() => statusMutation.mutate('open')}
-                disabled={statusMutation.isPending}
-              >
-                Reopen ticket
-              </button>
-            )}
+          <div className="flex items-center gap-3 pt-1 border-t border-slate-100">
+            <label className="text-xs font-medium text-slate-500 shrink-0">Status</label>
+            <select
+              className="input py-1 text-sm"
+              value={ticket.status}
+              onChange={e => statusMutation.mutate(e.target.value as TicketStatus)}
+              disabled={statusMutation.isPending}
+            >
+              {LANDLORD_STATUSES.map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
           </div>
         )}
       </div>
+
+      {/* Resolved confirmation panel (tenant only) */}
+      {isTenant && ticket.status === 'resolved' && (
+        <div className="card p-5 space-y-3 border-violet-200 bg-violet-50">
+          <p className="text-sm font-medium text-violet-900">
+            Your landlord has marked this issue as resolved. Confirm below to close it, or add a comment if further work is needed.
+          </p>
+          <button
+            className="btn bg-violet-600 text-white hover:bg-violet-700 border-violet-600"
+            onClick={() => statusMutation.mutate('closed')}
+            disabled={statusMutation.isPending}
+          >
+            Confirm &amp; Close
+          </button>
+        </div>
+      )}
 
       {/* Visit response panel (tenant only, pending requests) */}
       {isTenant && isVisit && ticket.visit_response === 'pending' && (
@@ -266,8 +301,8 @@ export default function TicketDetail() {
           )
         })}
 
-        {/* Comment box */}
-        {ticket.status === 'open' && (
+        {/* Comment box — disabled when closed */}
+        {!isClosed && (
           <div className="flex gap-3 pt-2">
             <div className="h-7 w-7 shrink-0 rounded-full bg-violet-700 flex items-center justify-center text-xs font-semibold text-white uppercase">
               {user?.username.charAt(0)}
@@ -287,7 +322,7 @@ export default function TicketDetail() {
                 }}
               />
               <button
-                className="btn-primary self-end px-3"
+                className="btn btn-primary self-end px-3"
                 onClick={() => commentMutation.mutate()}
                 disabled={commentMutation.isPending || !commentBody.trim()}
               >

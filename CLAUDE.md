@@ -66,7 +66,7 @@ cd frontend && npm run lint
 - `Tenancy` — links a tenant to a property (with optional start/end dates)
 - `PropertyInvite` — single-use token for tenant self-registration; auto-creates `Tenancy` and `LandlordTenant` on use
 - `LandlordTenant` — composite PK `(landlord_id, tenant_id)`; scoped ownership so tenant accounts belong to one landlord and data is isolated per landlord
-- `Ticket` — maintenance request or visit request; tied to a property; `assigned_to_tenant_id` for visit routing
+- `Ticket` — maintenance request or visit request; tied to a property; `assigned_to_tenant_id` for visit routing; `priority` (low/medium/high/urgent); `status` (open/in_progress/awaiting_tenant/resolved/closed)
 - `TicketComment` — threaded comments on tickets
 - `TicketRead` — composite PK `(ticket_id, user_id)`; tracks read/unread state per user
 - `AppSetting` — key/value store for global settings (e.g. `registration_enabled`)
@@ -77,7 +77,7 @@ cd frontend && npm run lint
 - `properties.py` — CRUD for landlords; `GET /mine` for tenant property view
 - `tenancies.py` — invite generation and tenancy management (under `/api/properties/{id}/...`)
 - `tenants.py` — landlord tenant pool: list, assign to property, unassign (`/api/tenants/`)
-- `tickets.py` — full ticket CRUD, comments, visit responses, unread count
+- `tickets.py` — full ticket CRUD, comments, visit responses, unread count (excludes closed tickets)
 
 **Route ordering:** Literal paths (e.g. `/mine`, `/unread-count`) must be registered before parameterised paths (`/{id}`) in the same router.
 

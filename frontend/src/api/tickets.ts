@@ -2,7 +2,8 @@ import api from './client'
 
 export type TicketType = 'maintenance' | 'visit_request'
 export type TicketCategory = 'plumbing' | 'electrical' | 'general' | 'structural' | 'pest_control' | 'appliances'
-export type TicketStatus = 'open' | 'closed'
+export type TicketStatus = 'open' | 'in_progress' | 'awaiting_tenant' | 'resolved' | 'closed'
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type VisitResponse = 'pending' | 'accepted' | 'rejected' | 'rescheduled'
 
 export interface TicketAuthor {
@@ -22,6 +23,7 @@ export interface TicketComment {
 export interface Ticket {
   id: number
   property_id: number
+  property_name: string
   created_by: number
   creator: TicketAuthor
   title: string
@@ -29,6 +31,7 @@ export interface Ticket {
   ticket_type: TicketType
   category: TicketCategory | null
   status: TicketStatus
+  priority: TicketPriority
   proposed_date: string | null
   visit_response: VisitResponse | null
   visit_suggested_date: string | null
@@ -45,6 +48,7 @@ export interface TicketCreate {
   description?: string
   ticket_type: TicketType
   category?: TicketCategory
+  priority?: TicketPriority
   proposed_date?: string
   tenant_id?: number
 }
@@ -56,6 +60,21 @@ export const CATEGORY_LABELS: Record<TicketCategory, string> = {
   structural: 'Structural',
   pest_control: 'Pest Control',
   appliances: 'Appliances',
+}
+
+export const STATUS_LABELS: Record<TicketStatus, string> = {
+  open: 'Open',
+  in_progress: 'In Progress',
+  awaiting_tenant: 'Awaiting Tenant',
+  resolved: 'Resolved',
+  closed: 'Closed',
+}
+
+export const PRIORITY_LABELS: Record<TicketPriority, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
 }
 
 export const VISIT_RESPONSE_LABELS: Record<VisitResponse, string> = {

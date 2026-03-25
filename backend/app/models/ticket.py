@@ -23,7 +23,17 @@ class TicketCategory(str, Enum):
 
 class TicketStatus(str, Enum):
     OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    AWAITING_TENANT = "awaiting_tenant"
+    RESOLVED = "resolved"
     CLOSED = "closed"
+
+
+class TicketPriority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
 
 
 class VisitResponse(str, Enum):
@@ -45,6 +55,7 @@ class Ticket(Base):
     ticket_type = Column(SAEnum(TicketType), nullable=False, default=TicketType.MAINTENANCE)
     category = Column(SAEnum(TicketCategory), nullable=True)  # maintenance tickets only
     status = Column(SAEnum(TicketStatus), nullable=False, default=TicketStatus.OPEN)
+    priority = Column(SAEnum(TicketPriority), nullable=False, default=TicketPriority.MEDIUM)
 
     # Visit request fields
     assigned_to_tenant_id = Column(Integer, ForeignKey("users.id"), nullable=True)

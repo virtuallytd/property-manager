@@ -8,7 +8,7 @@ A self-hosted property management portal for landlords and tenants. Built with F
 - **Property management** — Landlords create and manage properties (flat, house, HMO)
 - **Tenant management** — Admins create tenant accounts scoped to a specific landlord; landlords assign/unassign tenants to properties
 - **Tenant invite system** — Landlords generate single-use invite links; tenants self-register via invite and are automatically linked
-- **Ticket system** — Tenants raise maintenance requests; landlords schedule property visits with per-tenant routing; unread tracking with sidebar badge counts
+- **Ticket system** — Tenants raise maintenance requests with priority (low/medium/high/urgent); landlords manage status (open → in progress → awaiting tenant → resolved → closed); tenants confirm resolution to close; unread badge tracking
 - **Admin panel** — User management (approve, create, disable, delete with guard rails), global settings (registration toggle), stats
 
 ## Stack

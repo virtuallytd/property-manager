@@ -19,7 +19,7 @@ def _to_out(prop: Property, db: Session) -> PropertyOut:
     tenant_count = db.query(Tenancy).filter(Tenancy.property_id == prop.id).count()
     open_ticket_count = db.query(Ticket).filter(
         Ticket.property_id == prop.id,
-        Ticket.status == TicketStatus.OPEN,
+        Ticket.status != TicketStatus.CLOSED,
     ).count()
     return PropertyOut(
         id=prop.id,

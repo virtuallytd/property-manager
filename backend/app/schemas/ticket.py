@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
-from app.models.ticket import TicketCategory, TicketStatus, TicketType, VisitResponse
+from app.models.ticket import TicketCategory, TicketPriority, TicketStatus, TicketType, VisitResponse
 
 
 class AuthorOut(BaseModel):
@@ -26,6 +26,7 @@ class TicketCommentOut(BaseModel):
 class TicketOut(BaseModel):
     id: int
     property_id: int
+    property_name: str
     created_by: int
     creator: AuthorOut
     title: str
@@ -33,6 +34,7 @@ class TicketOut(BaseModel):
     ticket_type: TicketType
     category: Optional[TicketCategory]
     status: TicketStatus
+    priority: TicketPriority
     proposed_date: Optional[datetime]
     visit_response: Optional[VisitResponse]
     visit_suggested_date: Optional[datetime]
@@ -47,12 +49,14 @@ class TicketListOut(BaseModel):
     """Lighter version for list views — no comments."""
     id: int
     property_id: int
+    property_name: str
     created_by: int
     creator: AuthorOut
     title: str
     ticket_type: TicketType
     category: Optional[TicketCategory]
     status: TicketStatus
+    priority: TicketPriority
     proposed_date: Optional[datetime]
     visit_response: Optional[VisitResponse]
     created_at: datetime
@@ -72,6 +76,7 @@ class TicketCreate(BaseModel):
     description: Optional[str] = None
     ticket_type: TicketType = TicketType.MAINTENANCE
     category: Optional[TicketCategory] = None
+    priority: TicketPriority = TicketPriority.MEDIUM
     proposed_date: Optional[datetime] = None  # visit requests only
     tenant_id: Optional[int] = None  # visit requests: which tenant this is assigned to
 
