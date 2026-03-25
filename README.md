@@ -1,118 +1,74 @@
-# SocialPost
+# Property Manager
 
-A self-hosted social media scheduler that runs in Docker. Schedule posts across multiple accounts and platforms from a clean web UI. Built to be extensible — Twitter/X is supported today, with more platforms easy to add.
+A self-hosted property management portal for landlords and tenants. Built with FastAPI + React.
 
 ## Features
 
-- **Schedule posts** to one or multiple accounts at a specific date and time
-- **Twitter threads** — compose multiple chained tweets in a single post
-- **Drafts** — save work in progress and schedule it later
-- **Multiple accounts** per platform — connect as many Twitter accounts as you like
-- **Queue & History** — view upcoming posts, past sends, and failures with error details
-- **Retry & reschedule failed posts** directly from the UI
-- **Timezone support** — configure your timezone in Settings; all times display accordingly
-- **Encrypted credentials** — OAuth tokens are encrypted at rest using a Fernet key derived from your secret key
-- **Persistent scheduler** — APScheduler backed by PostgreSQL, so scheduled posts survive container restarts
+- **Multi-role auth** — Admin, Landlord, and Tenant accounts with JWT authentication
+- **Property management** — Landlords create and manage properties (flat, house, HMO)
+- **Tenant management** — Admins create tenant accounts scoped to a specific landlord; landlords assign/unassign tenants to properties
+- **Tenant invite system** — Landlords generate single-use invite links; tenants self-register via invite and are automatically linked
+- **Ticket system** — Tenants raise maintenance requests; landlords schedule property visits with per-tenant routing; unread tracking with sidebar badge counts
+- **Admin panel** — User management (approve, create, disable, delete with guard rails), global settings (registration toggle), stats
 
 ## Stack
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.12, FastAPI, SQLAlchemy, APScheduler |
-| Frontend | React 18, TypeScript, Tailwind CSS, TanStack Query |
-| Database | PostgreSQL 16 |
-| Auth | Twitter OAuth 1.0a via Tweepy |
-| Infrastructure | Docker Compose |
+| Backend | Python, FastAPI, SQLAlchemy, Alembic, PostgreSQL |
+| Frontend | React 18, TypeScript, Vite, TanStack Query, React Hook Form + Zod, Tailwind CSS |
+| Container | Podman / Docker Compose |
 
-## Getting Started
-
-### 1. Twitter Developer App
-
-Before running the app, create a Twitter Developer App at [developer.twitter.com](https://developer.twitter.com):
-
-1. Create a new project and app
-2. Enable **OAuth 1.0a** with **Read and Write** permissions
-3. Add `http://localhost:8000/api/oauth/twitter/callback` to the **Callback URLs**
-4. Copy your **API Key** and **API Secret**
-
-### 2. Configure environment
+## Getting started
 
 ```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```env
-# Generate with: openssl rand -hex 32
-SECRET_KEY=your-secret-key-here
-
-TWITTER_CONSUMER_KEY=your-api-key
-TWITTER_CONSUMER_SECRET=your-api-secret
-```
-
-### 3. Run
-
-```bash
-docker compose up --build
+cp .env.example .env   # set SECRET_KEY at minimum
+podman-compose up --build
 ```
 
 - App: http://localhost:3000
-- API: http://localhost:8000
 - API docs: http://localhost:8000/docs
 
-### 4. Connect your Twitter account
+Default admin credentials are set via `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_USERNAME` env vars (see `.env.example`).
 
-Navigate to **Accounts** in the sidebar and click **Connect Twitter Account**. You can connect multiple accounts and choose which ones to target when composing a post.
+## Database migrations
 
-## Usage
+```bash
+# Apply all pending migrations
+podman-compose exec backend alembic upgrade head
 
-**Compose** — write your post, select one or more accounts, pick a date and time, and hit Schedule. Add tweets to turn it into a thread. Hit **Save as Draft** to save without scheduling.
-
-**Drafts** — posts saved without a schedule. Open any draft to edit and schedule it when ready.
-
-**Queue** — all upcoming scheduled posts. Use the send button to send immediately, or the edit button to make changes before it goes out.
-
-**History** — all sent, failed, and cancelled posts. Filter by status. Failed posts show the exact error and can be retried immediately or rescheduled to a new time.
-
-**Settings** — set your timezone. All scheduled times are displayed and interpreted in this timezone.
-
-## Project Structure
-
-```
-socialpost/
-├── backend/
-│   └── app/
-│       ├── adapters/       # Platform adapter pattern (base + twitter)
-│       ├── api/routes/     # FastAPI route handlers
-│       ├── models/         # SQLAlchemy models
-│       ├── scheduler/      # APScheduler job runner
-│       ├── crypto.py       # Fernet token encryption
-│       └── main.py
-└── frontend/
-    └── src/
-        ├── api/            # Typed API client
-        ├── components/     # Shared UI components
-        ├── pages/          # Route-level page components
-        └── hooks/          # useSettings, useFormatDate
+# Generate a new migration after changing models
+podman-compose exec backend alembic revision --autogenerate -m "description"
 ```
 
-## Adding a New Platform
+> **Note:** Autogenerate may detect `apscheduler_jobs` as removed — delete those lines before applying.
 
-1. Create `backend/app/adapters/<platform>.py` implementing the `SocialAdapter` abstract class
-2. Register it in `ADAPTERS` in `adapters/registry.py`
-3. Add a seed entry in `seed_platforms()` in `main.py`
-4. Add OAuth route(s) in `api/routes/oauth.py`
-5. Add a connect button in `frontend/src/pages/Accounts.tsx`
-6. Add a platform icon to the `platformIcon` maps in `PostCard.tsx` and `Accounts.tsx`
+## Environment variables
 
-## Environment Variables
-
-| Variable | Description | Default |
+| Variable | Default | Description |
 |---|---|---|
-| `SECRET_KEY` | Fernet encryption key seed — keep this secret | — |
-| `TWITTER_CONSUMER_KEY` | Twitter App API key | — |
-| `TWITTER_CONSUMER_SECRET` | Twitter App API secret | — |
-| `TWITTER_CALLBACK_URL` | Must match Twitter Developer Portal | `http://localhost:8000/api/oauth/twitter/callback` |
-| `FRONTEND_URL` | Used for CORS and OAuth redirects | `http://localhost:3000` |
-| `DATABASE_URL` | PostgreSQL connection string | set by Docker Compose |
+| `SECRET_KEY` | _(required)_ | JWT signing key |
+| `FRONTEND_URL` | `http://localhost:3000` | CORS origin |
+| `BACKEND_URL` | `http://localhost:8000` | Used for avatar URLs |
+| `ADMIN_EMAIL` | `admin@example.com` | Seeded admin email |
+| `ADMIN_PASSWORD` | `changeme123` | Seeded admin password (change this!) |
+| `ADMIN_USERNAME` | `admin` | Seeded admin username |
+| `UPLOAD_DIR` | `/app/uploads` | File upload path |
+
+## Project structure
+
+```
+backend/
+  app/
+    api/routes/       # auth, admin, properties, tenancies, tenants, tickets
+    models/           # User, Property, Tenancy, PropertyInvite, LandlordTenant, Ticket, TicketComment, TicketRead
+    schemas/          # Pydantic v2 request/response schemas
+    core/             # JWT + password hashing
+  alembic/versions/   # database migrations
+
+frontend/src/
+  api/                # typed axios clients (auth, properties, tenants, tickets)
+  pages/              # Properties, PropertyDetail, Tenants, Tickets, TicketDetail, Admin, Settings
+  components/         # Layout, Sidebar, ProtectedRoute, PageHeader
+  contexts/           # AuthContext (JWT + current user)
+```

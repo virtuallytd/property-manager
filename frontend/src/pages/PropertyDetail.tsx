@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Building2, Calendar, Check, Copy, Link, MapPin,
+  ArrowLeft, Building2, Calendar, CalendarClock, Check, Copy, Link, MapPin,
   Plus, Trash2, UserMinus, X,
 } from 'lucide-react'
 import { getProperty } from '../api/properties'
@@ -16,6 +16,7 @@ import {
   revokeInvite,
   updateTenancy,
 } from '../api/tenancies'
+import { createTicket } from '../api/tickets'
 import PageHeader from '../components/PageHeader'
 
 // ─── Invite modal ─────────────────────────────────────────────────────────────
@@ -96,6 +97,151 @@ function InviteModal({ propertyId, onClose }: { propertyId: number; onClose: () 
               {mutation.isPending ? 'Generating…' : 'Generate Link'}
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Schedule visit modal ─────────────────────────────────────────────────────
+
+function ScheduleVisitModal({
+  propertyId,
+  tenancies,
+  onClose,
+}: {
+  propertyId: number
+  tenancies: Tenancy[]
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [title, setTitle] = useState('')
+  const [proposedDate, setProposedDate] = useState('')
+  const [description, setDescription] = useState('')
+  const [selectedTenantIds, setSelectedTenantIds] = useState<Set<number>>(
+    new Set(tenancies.map(t => t.tenant.id))
+  )
+
+  const toggleTenant = (id: number) =>
+    setSelectedTenantIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
+  const [isPending, setIsPending] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!proposedDate || selectedTenantIds.size === 0) return
+    setIsPending(true)
+    try {
+      await Promise.all(
+        [...selectedTenantIds].map(tenantId =>
+          createTicket({
+            property_id: propertyId,
+            title: title || 'Visit request',
+            description: description || undefined,
+            ticket_type: 'visit_request',
+            proposed_date: new Date(proposedDate).toISOString(),
+            tenant_id: tenantId,
+          })
+        )
+      )
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['tickets-unread-count'] })
+      queryClient.invalidateQueries({ queryKey: ['property', propertyId] })
+      toast.success(
+        selectedTenantIds.size === 1
+          ? 'Visit request sent'
+          : `Visit requests sent to ${selectedTenantIds.size} tenants`
+      )
+      onClose()
+    } catch {
+      toast.error('Failed to schedule visit')
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  const minDateStr = new Date(Date.now() + 86400000).toISOString().slice(0, 16)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+        <div className="border-b border-slate-100 px-6 py-4">
+          <h2 className="text-base font-semibold text-slate-900">Schedule a Visit</h2>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Title</label>
+            <input
+              className="input w-full"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. Annual inspection"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Proposed date &amp; time</label>
+            <input
+              type="datetime-local"
+              className="input w-full"
+              min={minDateStr}
+              value={proposedDate}
+              onChange={e => setProposedDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Notes <span className="text-slate-400">(optional)</span>
+            </label>
+            <textarea
+              className="input w-full resize-none"
+              rows={2}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Any details for the tenant…"
+            />
+          </div>
+
+          {tenancies.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-2">Notify tenants</label>
+              <div className="space-y-2">
+                {tenancies.map(t => (
+                  <label key={t.tenant.id} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      checked={selectedTenantIds.has(t.tenant.id)}
+                      onChange={() => toggleTenant(t.tenant.id)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-violet-100 flex items-center justify-center text-xs font-semibold text-violet-700 overflow-hidden">
+                        {t.tenant.avatar_url
+                          ? <img src={t.tenant.avatar_url} alt="" className="h-full w-full object-cover" />
+                          : t.tenant.username.charAt(0).toUpperCase()
+                        }
+                      </div>
+                      <span className="text-sm text-slate-700">@{t.tenant.username}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4">
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button
+            className="btn-primary"
+            onClick={handleSubmit}
+            disabled={isPending || !proposedDate || selectedTenantIds.size === 0}
+          >
+            {isPending ? 'Sending…' : `Send to ${selectedTenantIds.size} ${selectedTenantIds.size === 1 ? 'tenant' : 'tenants'}`}
+          </button>
         </div>
       </div>
     </div>
@@ -211,6 +357,7 @@ export default function PropertyDetail() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
+  const [visitModalOpen, setVisitModalOpen] = useState(false)
 
   const { data: property, isLoading: propLoading } = useQuery({
     queryKey: ['property', propertyId],
@@ -252,10 +399,16 @@ export default function PropertyDetail() {
         title={property.name}
         description={`${property.address_line1}, ${property.city}`}
         action={
-          <button className="btn-primary" onClick={() => setInviteModalOpen(true)}>
-            <Plus size={15} />
-            Invite Tenant
-          </button>
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={() => setVisitModalOpen(true)}>
+              <CalendarClock size={15} />
+              Schedule Visit
+            </button>
+            <button className="btn-primary" onClick={() => setInviteModalOpen(true)}>
+              <Plus size={15} />
+              Invite Tenant
+            </button>
+          </div>
         }
       />
 
@@ -342,6 +495,9 @@ export default function PropertyDetail() {
 
       {inviteModalOpen && (
         <InviteModal propertyId={propertyId} onClose={() => setInviteModalOpen(false)} />
+      )}
+      {visitModalOpen && (
+        <ScheduleVisitModal propertyId={propertyId} tenancies={tenancies} onClose={() => setVisitModalOpen(false)} />
       )}
     </div>
   )

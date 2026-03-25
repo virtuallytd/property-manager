@@ -29,5 +29,9 @@ class User(Base):
 
     properties = relationship("Property", back_populates="landlord")
     tenancies = relationship("Tenancy", back_populates="tenant")
+    managed_tenants = relationship("LandlordTenant", foreign_keys="LandlordTenant.landlord_id", back_populates="landlord")
+    landlord_links = relationship("LandlordTenant", foreign_keys="LandlordTenant.tenant_id", back_populates="tenant")
+    created_tickets = relationship("Ticket", foreign_keys="Ticket.created_by", back_populates="creator")
+    ticket_comments = relationship("TicketComment", foreign_keys="TicketComment.author_id", back_populates="author")
 
 

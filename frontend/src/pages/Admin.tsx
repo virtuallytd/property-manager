@@ -5,6 +5,7 @@ import { Plus, Trash2, CheckCircle, XCircle, UserCheck, UserX, Shield } from 'lu
 import {
   adminListUsers,
   adminCreateUser,
+  adminListLandlords,
   adminUpdateUser,
   adminDeleteUser,
   adminGetSettings,
@@ -22,10 +23,24 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'admin' | 'landlord' | 'tenant'>('landlord')
+  const [landlordId, setLandlordId] = useState<number | ''>('')
   const [error, setError] = useState<string | null>(null)
 
+  const { data: landlords = [] } = useQuery({
+    queryKey: ['admin', 'landlords'],
+    queryFn: adminListLandlords,
+    enabled: role === 'tenant',
+  })
+
   const mutation = useMutation({
-    mutationFn: () => adminCreateUser({ email, username, password }),
+    mutationFn: () => adminCreateUser({
+      email,
+      username,
+      password,
+      role,
+      ...(role === 'tenant' && landlordId ? { landlord_id: Number(landlordId) } : {}),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       toast.success('User created')
@@ -35,6 +50,9 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
       setError(err.response?.data?.detail || 'Failed to create user')
     },
   })
+
+  const canSubmit = !mutation.isPending && !!email && !!username && !!password &&
+    (role !== 'tenant' || !!landlordId)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -77,6 +95,37 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             placeholder="••••••••"
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+          <select
+            className="input w-full"
+            value={role}
+            onChange={e => {
+              setRole(e.target.value as typeof role)
+              setLandlordId('')
+            }}
+          >
+            <option value="landlord">Landlord</option>
+            <option value="tenant">Tenant</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        {role === 'tenant' && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Assign to Landlord</label>
+            <select
+              className="input w-full"
+              value={landlordId}
+              onChange={e => setLandlordId(Number(e.target.value))}
+            >
+              <option value="">Select a landlord…</option>
+              {landlords.map(l => (
+                <option key={l.id} value={l.id}>@{l.username}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex gap-3 pt-2">
           <button className="btn-secondary flex-1 justify-center" onClick={onClose}>
@@ -85,7 +134,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
           <button
             className="btn-primary flex-1 justify-center"
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !email || !username || !password}
+            disabled={!canSubmit}
           >
             {mutation.isPending ? 'Creating…' : 'Create'}
           </button>

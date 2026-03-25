@@ -10,7 +10,7 @@ from app.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models.settings import AppSetting, DEFAULTS
-from app.models.tenancy import PropertyInvite, Tenancy
+from app.models.tenancy import LandlordTenant, PropertyInvite, Tenancy
 from app.models.user import User, UserRole
 from app.schemas.tenancy import InviteInfoOut, RegisterByInvite
 from app.schemas.user import LoginRequest, TokenResponse, UserCreate, UserOut, UserProfileUpdate
@@ -101,6 +101,15 @@ def register_by_invite(body: RegisterByInvite, db: Session = Depends(get_db)):
 
     tenancy = Tenancy(property_id=invite.property_id, tenant_id=user.id)
     db.add(tenancy)
+
+    # Link tenant to landlord (scoped ownership)
+    landlord_id = invite.property.landlord_id
+    existing_link = db.query(LandlordTenant).filter(
+        LandlordTenant.landlord_id == landlord_id,
+        LandlordTenant.tenant_id == user.id,
+    ).first()
+    if not existing_link:
+        db.add(LandlordTenant(landlord_id=landlord_id, tenant_id=user.id))
 
     invite.used_at = datetime.utcnow()
     invite.used_by_id = user.id

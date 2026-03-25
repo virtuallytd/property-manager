@@ -2,7 +2,8 @@ from app.models.base import Base
 from app.models.user import User, UserRole
 from app.models.settings import AppSetting
 from app.models.property import Property, PropertyType
-from app.models.tenancy import Tenancy, PropertyInvite
+from app.models.tenancy import Tenancy, PropertyInvite, LandlordTenant
+from app.models.ticket import Ticket, TicketComment, TicketRead, TicketType, TicketCategory, TicketStatus, VisitResponse
 
 __all__ = [
     "Base",
@@ -13,4 +14,12 @@ __all__ = [
     "PropertyType",
     "Tenancy",
     "PropertyInvite",
+    "LandlordTenant",
+    "Ticket",
+    "TicketComment",
+    "TicketType",
+    "TicketCategory",
+    "TicketStatus",
+    "VisitResponse",
+    "TicketRead",
 ]

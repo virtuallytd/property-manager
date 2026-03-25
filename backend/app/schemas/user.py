@@ -8,6 +8,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     username: str
     password: str
+    role: UserRole = UserRole.LANDLORD
+    landlord_id: int | None = None
 
 
 class UserOut(BaseModel):

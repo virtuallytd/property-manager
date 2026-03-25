@@ -13,6 +13,7 @@ export interface Property {
   postcode: string
   description: string | null
   tenant_count: number
+  open_ticket_count: number
   created_at: string
 }
 

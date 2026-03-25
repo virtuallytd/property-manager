@@ -7,6 +7,8 @@ from app.api.deps import get_current_admin
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.settings import AppSetting, DEFAULTS
+from app.models.property import Property
+from app.models.tenancy import LandlordTenant, Tenancy
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserOut, UserUpdate
 
@@ -42,6 +44,14 @@ def get_stats(
     }
 
 
+@router.get("/landlords", response_model=list[UserOut])
+def list_landlords(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    return db.query(User).filter(User.role == UserRole.LANDLORD, User.is_active == True).order_by(User.username.asc()).all()  # noqa: E712
+
+
 @router.get("/users", response_model=list[UserOut])
 def list_users(
     db: Session = Depends(get_db),
@@ -61,15 +71,30 @@ def create_user(
     if db.query(User).filter(User.username == body.username).first():
         raise HTTPException(status_code=400, detail="Username already taken")
 
+    if body.role == UserRole.TENANT and body.landlord_id is None:
+        raise HTTPException(status_code=400, detail="Tenant accounts must be assigned to a landlord")
+
+    if body.landlord_id is not None:
+        landlord = db.query(User).filter(
+            User.id == body.landlord_id, User.role == UserRole.LANDLORD
+        ).first()
+        if not landlord:
+            raise HTTPException(status_code=400, detail="Landlord not found")
+
     user = User(
         email=body.email,
         username=body.username,
         hashed_password=hash_password(body.password),
-        role=UserRole.USER,
+        role=body.role,
         is_approved=True,
         is_active=True,
     )
     db.add(user)
+    db.flush()
+
+    if body.landlord_id is not None:
+        db.add(LandlordTenant(landlord_id=body.landlord_id, tenant_id=user.id))
+
     db.commit()
     db.refresh(user)
     return user
@@ -110,6 +135,19 @@ def delete_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if db.query(Tenancy).filter(Tenancy.tenant_id == user_id).first():
+        raise HTTPException(status_code=400, detail="Cannot delete this tenant — they are currently assigned to a property. Unassign them first.")
+
+    if db.query(Property).filter(Property.landlord_id == user_id).first():
+        raise HTTPException(status_code=400, detail="Cannot delete this landlord — they still have properties. Delete or reassign their properties first.")
+
+    if db.query(LandlordTenant).filter(LandlordTenant.landlord_id == user_id).first():
+        raise HTTPException(status_code=400, detail="Cannot delete this landlord — they still have tenants assigned to them. Remove their tenants first.")
+
+    db.query(LandlordTenant).filter(
+        (LandlordTenant.tenant_id == user_id) | (LandlordTenant.landlord_id == user_id)
+    ).delete(synchronize_session=False)
 
     db.delete(user)
     db.commit()

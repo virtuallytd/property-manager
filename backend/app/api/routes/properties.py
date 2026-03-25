@@ -7,6 +7,7 @@ from app.config import settings
 from app.db.session import get_db
 from app.models.property import Property
 from app.models.tenancy import Tenancy
+from app.models.ticket import Ticket, TicketStatus
 from app.models.user import User
 from app.schemas.property import PropertyCreate, PropertyOut, PropertyUpdate
 from app.schemas.tenancy import LandlordOut, MyPropertyOut
@@ -16,6 +17,10 @@ router = APIRouter()
 
 def _to_out(prop: Property, db: Session) -> PropertyOut:
     tenant_count = db.query(Tenancy).filter(Tenancy.property_id == prop.id).count()
+    open_ticket_count = db.query(Ticket).filter(
+        Ticket.property_id == prop.id,
+        Ticket.status == TicketStatus.OPEN,
+    ).count()
     return PropertyOut(
         id=prop.id,
         landlord_id=prop.landlord_id,
@@ -27,6 +32,7 @@ def _to_out(prop: Property, db: Session) -> PropertyOut:
         postcode=prop.postcode,
         description=prop.description,
         tenant_count=tenant_count,
+        open_ticket_count=open_ticket_count,
         created_at=prop.created_at,
     )
 

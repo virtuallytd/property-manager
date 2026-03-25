@@ -47,8 +47,11 @@ export interface UserUpdate {
 export const adminListUsers = () =>
   api.get<UserOut[]>('/admin/users').then(r => r.data)
 
-export const adminCreateUser = (data: { email: string; username: string; password: string }) =>
+export const adminCreateUser = (data: { email: string; username: string; password: string; role: 'admin' | 'landlord' | 'tenant'; landlord_id?: number }) =>
   api.post<UserOut>('/admin/users', data).then(r => r.data)
+
+export const adminListLandlords = () =>
+  api.get<UserOut[]>('/admin/landlords').then(r => r.data)
 
 export const adminUpdateUser = (userId: number, data: UserUpdate) =>
   api.patch<UserOut>(`/admin/users/${userId}`, data).then(r => r.data)

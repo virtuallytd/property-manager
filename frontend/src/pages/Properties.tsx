@@ -176,9 +176,17 @@ function PropertyCard({ property, onEdit, onDelete }: { property: Property; onEd
         <p className="text-xs text-slate-400 line-clamp-2">{property.description}</p>
       )}
 
-      <div className="flex items-center gap-1.5 border-t border-slate-100 pt-3 text-xs text-slate-500">
-        <Users size={13} className="text-slate-400" />
-        <span>{property.tenant_count} {property.tenant_count === 1 ? 'tenant' : 'tenants'}</span>
+      <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <Users size={13} className="text-slate-400" />
+          <span>{property.tenant_count} {property.tenant_count === 1 ? 'tenant' : 'tenants'}</span>
+        </div>
+        {property.open_ticket_count > 0 && (
+          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            {property.open_ticket_count} open {property.open_ticket_count === 1 ? 'ticket' : 'tickets'}
+          </span>
+        )}
       </div>
     </div>
   )

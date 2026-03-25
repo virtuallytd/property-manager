@@ -23,6 +23,18 @@ class PropertyInvite(Base):
     used_by = relationship("User", foreign_keys=[used_by_id])
 
 
+class LandlordTenant(Base):
+    """Links a tenant account to a landlord — scoped ownership, independent of property assignment."""
+    __tablename__ = "landlord_tenants"
+
+    landlord_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    landlord = relationship("User", foreign_keys=[landlord_id], back_populates="managed_tenants")
+    tenant = relationship("User", foreign_keys=[tenant_id], back_populates="landlord_links")
+
+
 class Tenancy(Base):
     __tablename__ = "tenancies"
 

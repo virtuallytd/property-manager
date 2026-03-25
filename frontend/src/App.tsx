@@ -6,6 +6,9 @@ import Dashboard from './pages/Dashboard'
 import Properties from './pages/Properties'
 import PropertyDetail from './pages/PropertyDetail'
 import InviteRegister from './pages/InviteRegister'
+import Tenants from './pages/Tenants'
+import Tickets from './pages/Tickets'
+import TicketDetail from './pages/TicketDetail'
 import SettingsPage from './pages/Settings'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -32,6 +35,9 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/properties" element={<Properties />} />
           <Route path="/properties/:id" element={<PropertyDetail />} />
+          <Route path="/tenants" element={<Tenants />} />
+          <Route path="/tickets" element={<Tickets />} />
+          <Route path="/tickets/:id" element={<TicketDetail />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route
             path="/admin"

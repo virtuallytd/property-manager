@@ -1,7 +1,10 @@
 import { NavLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   Building2,
   LayoutDashboard,
+  Ticket,
+  Users,
   Zap,
   Settings,
   Shield,
@@ -9,6 +12,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth } from '../hooks/useAuth'
+import { getUnreadCount } from '../api/tickets'
 
 const bottomItems = [
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -16,6 +20,14 @@ const bottomItems = [
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
+
+  const { data: unreadData } = useQuery({
+    queryKey: ['tickets-unread-count'],
+    queryFn: getUnreadCount,
+    refetchInterval: 30_000,
+    enabled: !!user,
+  })
+  const unreadCount = unreadData?.count ?? 0
 
   return (
     <aside className="flex h-full w-60 flex-shrink-0 flex-col bg-[#0f172a]">
@@ -32,6 +44,7 @@ export default function Sidebar() {
         {[
           { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { to: '/properties', label: 'Properties', icon: Building2 },
+          ...(user?.role === 'landlord' ? [{ to: '/tenants', label: 'Tenants', icon: Users }] : []),
         ].map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -49,6 +62,27 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
+
+        {/* Tickets with unread badge */}
+        <NavLink
+          to="/tickets"
+          className={({ isActive }) =>
+            clsx(
+              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+              isActive
+                ? 'bg-white/10 text-white'
+                : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+            )
+          }
+        >
+          <Ticket size={16} />
+          <span className="flex-1">Tickets</span>
+          {unreadCount > 0 && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-500 px-1.5 text-xs font-semibold text-white">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </NavLink>
       </nav>
 
       {/* Bottom nav */}

@@ -35,6 +35,7 @@ class PropertyOut(BaseModel):
     postcode: str
     description: str | None
     tenant_count: int
+    open_ticket_count: int
     created_at: datetime
 
     model_config = {"from_attributes": True}
