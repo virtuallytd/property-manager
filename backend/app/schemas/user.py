@@ -42,6 +42,11 @@ class UserOut(BaseModel):
         )
 
 
+class AdminUserOut(UserOut):
+    property_count: int | None = None
+    tenant_count: int | None = None
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

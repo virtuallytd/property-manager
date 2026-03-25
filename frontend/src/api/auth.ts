@@ -9,6 +9,8 @@ export interface UserOut {
   is_active: boolean
   avatar_url: string | null
   created_at: string
+  property_count?: number | null
+  tenant_count?: number | null
 }
 
 export interface TokenResponse {
@@ -73,6 +75,11 @@ export interface AdminStats {
     pending_approval: number
     disabled: number
     admins: number
+    landlords: number
+    tenants: number
+  }
+  properties: {
+    total: number
   }
 }
 

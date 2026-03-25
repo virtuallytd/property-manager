@@ -10,7 +10,7 @@ from app.models.settings import AppSetting, DEFAULTS
 from app.models.property import Property
 from app.models.tenancy import LandlordTenant, Tenancy
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserOut, UserUpdate
+from app.schemas.user import AdminUserOut, UserCreate, UserOut, UserUpdate
 
 router = APIRouter()
 
@@ -32,6 +32,9 @@ def get_stats(
     pending_users = db.query(User).filter(User.is_approved == False, User.is_active == True).count()  # noqa: E712
     disabled_users = db.query(User).filter(User.is_active == False).count()
     admin_users = db.query(User).filter(User.role == UserRole.ADMIN).count()
+    landlord_users = db.query(User).filter(User.role == UserRole.LANDLORD).count()
+    tenant_users = db.query(User).filter(User.role == UserRole.TENANT).count()
+    total_properties = db.query(Property).count()
 
     return {
         "users": {
@@ -40,6 +43,11 @@ def get_stats(
             "pending_approval": pending_users,
             "disabled": disabled_users,
             "admins": admin_users,
+            "landlords": landlord_users,
+            "tenants": tenant_users,
+        },
+        "properties": {
+            "total": total_properties,
         },
     }
 
@@ -52,12 +60,24 @@ def list_landlords(
     return db.query(User).filter(User.role == UserRole.LANDLORD, User.is_active == True).order_by(User.username.asc()).all()  # noqa: E712
 
 
-@router.get("/users", response_model=list[UserOut])
+@router.get("/users", response_model=list[AdminUserOut])
 def list_users(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin),
 ):
-    return db.query(User).order_by(User.created_at.asc()).all()
+    users = db.query(User).order_by(User.created_at.asc()).all()
+    result = []
+    for user in users:
+        property_count = None
+        tenant_count = None
+        if user.role == UserRole.LANDLORD:
+            property_count = db.query(Property).filter(Property.landlord_id == user.id).count()
+            tenant_count = db.query(LandlordTenant).filter(LandlordTenant.landlord_id == user.id).count()
+        out = AdminUserOut.from_user(user)
+        out.property_count = property_count
+        out.tenant_count = tenant_count
+        result.append(out)
+    return result
 
 
 @router.post("/users", response_model=UserOut, status_code=201)

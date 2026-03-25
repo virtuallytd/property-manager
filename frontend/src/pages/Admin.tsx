@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, CheckCircle, XCircle, UserCheck, UserX, Shield } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, XCircle, UserCheck, UserX, Shield, Building2, Users } from 'lucide-react'
 import {
   adminListUsers,
   adminCreateUser,
@@ -309,7 +309,21 @@ function UserRow({ user, currentUserId, onApprove, onReject: _onReject, onToggle
           )}
         </div>
         <p className="text-xs text-slate-500 truncate">{user.email}</p>
-        <p className="text-xs text-slate-400 mt-0.5">Joined {new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        <div className="flex items-center gap-3 mt-0.5">
+          <p className="text-xs text-slate-400">Joined {new Date(user.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+          {user.role === 'landlord' && (
+            <>
+              <span className="flex items-center gap-1 text-xs text-slate-500">
+                <Building2 size={11} />
+                {user.property_count ?? 0} {user.property_count === 1 ? 'property' : 'properties'}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-slate-500">
+                <Users size={11} />
+                {user.tenant_count ?? 0} {user.tenant_count === 1 ? 'tenant' : 'tenants'}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
@@ -403,18 +417,23 @@ function StatsTab() {
 
   return (
     <div className="space-y-8">
-      {/* Users */}
       <div>
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Users</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="Total" value={stats.users.total} color="bg-slate-100 text-slate-600" />
-          <StatCard label="Active" value={stats.users.active} color="bg-green-100 text-green-700" />
+          <StatCard label="Total Users" value={stats.users.total} color="bg-slate-100 text-slate-600" />
+          <StatCard label="Landlords" value={stats.users.landlords} color="bg-blue-100 text-blue-700" />
+          <StatCard label="Tenants" value={stats.users.tenants} color="bg-green-100 text-green-700" />
           <StatCard label="Pending Approval" value={stats.users.pending_approval} color="bg-amber-100 text-amber-700" />
           <StatCard label="Disabled" value={stats.users.disabled} color="bg-red-100 text-red-600" />
-          <StatCard label="Admins" value={stats.users.admins} color="bg-violet-100 text-violet-700" />
         </div>
       </div>
 
+      <div>
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Properties</h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <StatCard label="Total Properties" value={stats.properties.total} color="bg-violet-100 text-violet-700" />
+        </div>
+      </div>
     </div>
   )
 }

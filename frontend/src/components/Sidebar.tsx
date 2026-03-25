@@ -2,10 +2,10 @@ import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Building2,
+  House,
   LayoutDashboard,
   Ticket,
   Users,
-  Zap,
   Settings,
   Shield,
   LogOut,
@@ -34,7 +34,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600">
-          <Zap size={16} className="text-white" />
+          <House size={16} className="text-white" />
         </div>
         <span className="text-base font-semibold text-white">Property Manager</span>
       </div>
