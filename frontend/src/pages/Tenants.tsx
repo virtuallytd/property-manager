@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { UserRound, Home, Unlink } from 'lucide-react'
+import PageHeader from '../components/PageHeader'
 import toast from 'react-hot-toast'
 import { listTenants, assignTenant, unassignTenant, TenantOut } from '../api/tenants'
 import { listProperties } from '../api/properties'
@@ -32,7 +33,7 @@ function AssignModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="card w-full max-w-sm space-y-4">
+      <div className="card w-full max-w-sm space-y-4 p-6">
         <h2 className="text-base font-semibold text-slate-900">
           Assign {tenant.username} to a property
         </h2>
@@ -82,11 +83,10 @@ export default function Tenants() {
   })
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-900">Tenants</h1>
-      </div>
+    <div>
+      <PageHeader title="Tenants" description="Manage your tenants and property assignments" />
 
+      <div className="p-8 flex flex-col gap-6">
       {isLoading ? (
         <p className="text-sm text-slate-500">Loading…</p>
       ) : tenants.length === 0 ? (
@@ -150,6 +150,7 @@ export default function Tenants() {
       {assignTarget && (
         <AssignModal tenant={assignTarget} onClose={() => setAssignTarget(null)} />
       )}
+      </div>
     </div>
   )
 }
