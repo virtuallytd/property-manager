@@ -69,6 +69,14 @@ class Ticket(Base):
     property = relationship("Property", back_populates="tickets")
     creator = relationship("User", foreign_keys=[created_by], back_populates="created_tickets")
     assigned_tenant = relationship("User", foreign_keys=[assigned_to_tenant_id])
+    attachments = relationship(
+        "TicketAttachment",
+        primaryjoin="Ticket.id == TicketAttachment.ticket_id",
+        back_populates=None,
+        cascade="all, delete-orphan",
+        foreign_keys="TicketAttachment.ticket_id",
+        overlaps="ticket",
+    )
     comments = relationship(
         "TicketComment",
         back_populates="ticket",
@@ -88,6 +96,22 @@ class TicketComment(Base):
 
     ticket = relationship("Ticket", back_populates="comments")
     author = relationship("User", foreign_keys=[author_id], back_populates="ticket_comments")
+    attachments = relationship("TicketAttachment", back_populates="comment", cascade="all, delete-orphan")
+
+
+class TicketAttachment(Base):
+    __tablename__ = "ticket_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("ticket_comments.id", ondelete="CASCADE"), nullable=True)
+    ticket_id = Column(Integer, ForeignKey("tickets.id", ondelete="CASCADE"), nullable=True)
+    original_filename = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    content_type = Column(String(100), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    comment = relationship("TicketComment", back_populates="attachments")
+    ticket_ref = relationship("Ticket", foreign_keys=[ticket_id], overlaps="attachments")
 
 
 class TicketRead(Base):

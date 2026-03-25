@@ -11,6 +11,8 @@ router = APIRouter()
 
 # Keys that are per-user (not global admin settings)
 USER_SETTING_KEYS = {"timezone"}
+# Global settings exposed to all authenticated users (read-only)
+PUBLIC_GLOBAL_KEYS = {"allowed_attachment_types"}
 
 
 def _get_user_settings(user_id: int, db: Session) -> dict:
@@ -20,6 +22,15 @@ def _get_user_settings(user_id: int, db: Session) -> dict:
     ).all()
     result = {k: v for k, v in DEFAULTS.items() if k in USER_SETTING_KEYS}
     result.update({r.key: r.value for r in rows})
+
+    # Merge in public global settings
+    global_rows = db.query(AppSetting).filter(
+        AppSetting.user_id == None,  # noqa: E711
+        AppSetting.key.in_(PUBLIC_GLOBAL_KEYS),
+    ).all()
+    result.update({k: v for k, v in DEFAULTS.items() if k in PUBLIC_GLOBAL_KEYS})
+    result.update({r.key: r.value for r in global_rows})
+
     return result
 
 

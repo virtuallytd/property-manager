@@ -68,8 +68,9 @@ cd frontend && npm run lint
 - `LandlordTenant` — composite PK `(landlord_id, tenant_id)`; scoped ownership so tenant accounts belong to one landlord and data is isolated per landlord
 - `Ticket` — maintenance request or visit request; tied to a property; `assigned_to_tenant_id` for visit routing; `priority` (low/medium/high/urgent); `status` (open/in_progress/awaiting_tenant/resolved/closed)
 - `TicketComment` — threaded comments on tickets
+- `TicketAttachment` — files attached to a comment (`comment_id`) or directly to a ticket (`ticket_id`); both FKs nullable, at least one set
 - `TicketRead` — composite PK `(ticket_id, user_id)`; tracks read/unread state per user
-- `AppSetting` — key/value store for global settings (e.g. `registration_enabled`)
+- `AppSetting` — key/value store for global settings (e.g. `registration_enabled`, `allowed_attachment_types`)
 
 **Route files:**
 - `auth.py` — register, register-by-invite, login, me, avatar upload
@@ -77,7 +78,7 @@ cd frontend && npm run lint
 - `properties.py` — CRUD for landlords; `GET /mine` for tenant property view
 - `tenancies.py` — invite generation and tenancy management (under `/api/properties/{id}/...`)
 - `tenants.py` — landlord tenant pool: list, assign to property, unassign (`/api/tenants/`)
-- `tickets.py` — full ticket CRUD, comments, visit responses, unread count (excludes closed tickets)
+- `tickets.py` — full ticket CRUD, comments with file attachments, visit responses, unread count (excludes closed tickets); validates uploaded file types against `allowed_attachment_types` setting
 
 **Route ordering:** Literal paths (e.g. `/mine`, `/unread-count`) must be registered before parameterised paths (`/{id}`) in the same router.
 
@@ -95,9 +96,9 @@ cd frontend && npm run lint
 - `PropertyDetail` — property info, tenancy list, invite management, schedule visit button (landlord only)
 - `Tenants` — landlord's tenant pool; assign/unassign/move tenants to properties (landlord only)
 - `Tickets` — open/closed tabs with property filter, unread highlighting
-- `TicketDetail` — thread view, visit response panel for tenants, auto-marks read on mount
+- `TicketDetail` — thread view with file attachments (images shown inline, other files as download links); visit response panel for tenants; auto-marks read on mount
 - `Settings` — timezone selector
-- `Admin` — stats, user management (create with landlord assignment for tenants), global settings
+- `Admin` — stats, user management (create with landlord assignment for tenants), global settings (registration toggle, allowed attachment types)
 
 ## Environment variables
 

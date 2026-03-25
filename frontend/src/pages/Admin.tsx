@@ -438,6 +438,26 @@ function StatsTab() {
   )
 }
 
+const ATTACHMENT_TYPE_OPTIONS = [
+  { label: 'Images', description: 'JPEG, PNG, GIF, WebP, etc.', value: 'image/*' },
+  { label: 'PDF Documents', description: 'Adobe PDF files', value: 'application/pdf' },
+  { label: 'Word Documents', description: 'DOC and DOCX files', value: 'application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+]
+
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      disabled={disabled}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${checked ? 'bg-violet-600' : 'bg-slate-200'}`}
+      role="switch"
+      aria-checked={checked}
+    >
+      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+    </button>
+  )
+}
+
 function SettingsTab() {
   const queryClient = useQueryClient()
   const { data: adminSettings } = useQuery({
@@ -447,14 +467,29 @@ function SettingsTab() {
 
   const registrationEnabled = adminSettings?.registration_enabled === 'true'
 
+  const currentAllowedTypes = adminSettings?.allowed_attachment_types ?? 'image/*,application/pdf'
+  const currentTypeSet = new Set(currentAllowedTypes.split(',').map(s => s.trim()).filter(Boolean))
+
   const mutation = useMutation({
-    mutationFn: (enabled: boolean) => adminUpdateSettings({ registration_enabled: enabled }),
+    mutationFn: (data: Parameters<typeof adminUpdateSettings>[0]) => adminUpdateSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] })
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] })
       toast.success('Settings updated')
     },
     onError: () => toast.error('Failed to update settings'),
   })
+
+  function toggleAttachmentType(mimeValues: string, enabled: boolean) {
+    const mimes = mimeValues.split(',')
+    let next: Set<string>
+    if (enabled) {
+      next = new Set([...currentTypeSet, ...mimes])
+    } else {
+      next = new Set([...currentTypeSet].filter(t => !mimes.includes(t)))
+    }
+    mutation.mutate({ allowed_attachment_types: [...next].join(',') })
+  }
 
   return (
     <div className="space-y-4 max-w-lg">
@@ -465,21 +500,39 @@ function SettingsTab() {
             Allow new users to self-register. When disabled, only admins can create accounts.
           </p>
         </div>
-        <button
-          onClick={() => mutation.mutate(!registrationEnabled)}
+        <Toggle
+          checked={registrationEnabled}
+          onChange={enabled => mutation.mutate({ registration_enabled: enabled })}
           disabled={mutation.isPending}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${
-            registrationEnabled ? 'bg-violet-600' : 'bg-slate-200'
-          }`}
-          role="switch"
-          aria-checked={registrationEnabled}
-        >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-              registrationEnabled ? 'translate-x-5' : 'translate-x-0'
-            }`}
-          />
-        </button>
+        />
+      </div>
+
+      <div className="card p-5 space-y-4">
+        <div>
+          <p className="text-sm font-medium text-slate-900">Allowed Attachment Types</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            File types tenants and landlords can attach to tickets and comments.
+          </p>
+        </div>
+        <div className="space-y-3">
+          {ATTACHMENT_TYPE_OPTIONS.map(opt => {
+            const mimes = opt.value.split(',')
+            const isEnabled = mimes.every(m => currentTypeSet.has(m))
+            return (
+              <div key={opt.value} className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-slate-700">{opt.label}</p>
+                  <p className="text-xs text-slate-400">{opt.description}</p>
+                </div>
+                <Toggle
+                  checked={isEnabled}
+                  onChange={enabled => toggleAttachmentType(opt.value, enabled)}
+                  disabled={mutation.isPending}
+                />
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

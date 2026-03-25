@@ -13,12 +13,22 @@ class AuthorOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AttachmentOut(BaseModel):
+    id: int
+    original_filename: str
+    url: str
+    content_type: str
+
+    model_config = {"from_attributes": True}
+
+
 class TicketCommentOut(BaseModel):
     id: int
     ticket_id: int
     author: AuthorOut
     body: str
     created_at: datetime
+    attachments: list[AttachmentOut] = []
 
     model_config = {"from_attributes": True}
 
@@ -40,6 +50,7 @@ class TicketOut(BaseModel):
     visit_suggested_date: Optional[datetime]
     created_at: datetime
     updated_at: datetime
+    attachments: list[AttachmentOut] = []
     comments: list[TicketCommentOut] = []
 
     model_config = {"from_attributes": True}

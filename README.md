@@ -9,7 +9,8 @@ A self-hosted property management portal for landlords and tenants. Built with F
 - **Tenant management** — Admins create tenant accounts scoped to a specific landlord; landlords assign/unassign tenants to properties
 - **Tenant invite system** — Landlords generate single-use invite links; tenants self-register via invite and are automatically linked
 - **Ticket system** — Tenants raise maintenance requests with priority (low/medium/high/urgent); landlords manage status (open → in progress → awaiting tenant → resolved → closed); tenants confirm resolution to close; unread badge tracking
-- **Admin panel** — User management (approve, create, disable, delete with guard rails), global settings (registration toggle), stats
+- **File attachments** — Files (images, PDFs, etc.) can be attached to tickets at creation and to individual comments; images render inline, other files as download links
+- **Admin panel** — User management (approve, create, disable, delete with guard rails), global settings (registration toggle, allowed attachment types), stats
 
 ## Stack
 
@@ -61,7 +62,7 @@ podman-compose exec backend alembic revision --autogenerate -m "description"
 backend/
   app/
     api/routes/       # auth, admin, properties, tenancies, tenants, tickets
-    models/           # User, Property, Tenancy, PropertyInvite, LandlordTenant, Ticket, TicketComment, TicketRead
+    models/           # User, Property, Tenancy, PropertyInvite, LandlordTenant, Ticket, TicketComment, TicketAttachment, TicketRead
     schemas/          # Pydantic v2 request/response schemas
     core/             # JWT + password hashing
   alembic/versions/   # database migrations

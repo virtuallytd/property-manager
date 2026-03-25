@@ -15,10 +15,13 @@ from app.schemas.user import AdminUserOut, UserCreate, UserOut, UserUpdate
 router = APIRouter()
 
 
+GLOBAL_SETTING_KEYS = {"registration_enabled", "allowed_attachment_types"}
+
+
 def _get_global_settings(db: Session) -> dict:
     rows = db.query(AppSetting).filter(AppSetting.user_id == None).all()  # noqa: E711
-    result = {k: v for k, v in DEFAULTS.items() if k == "registration_enabled"}
-    result.update({r.key: r.value for r in rows if r.key in result})
+    result = {k: v for k, v in DEFAULTS.items() if k in GLOBAL_SETTING_KEYS}
+    result.update({r.key: r.value for r in rows if r.key in GLOBAL_SETTING_KEYS})
     return result
 
 
@@ -183,6 +186,7 @@ def get_admin_settings(
 
 class AdminSettingsBody(BaseModel):
     registration_enabled: bool | None = None
+    allowed_attachment_types: str | None = None  # comma-separated MIME types e.g. "image/*,application/pdf"
 
 
 @router.patch("/settings")
@@ -194,7 +198,7 @@ def update_admin_settings(
     updates = body.model_dump(exclude_none=True)
 
     for key, val in updates.items():
-        str_value = str(val).lower() if isinstance(val, bool) else str(val)
+        str_value = str(val).lower() if isinstance(val, bool) else (val if isinstance(val, str) else str(val))
         row = db.query(AppSetting).filter(
             AppSetting.key == key,
             AppSetting.user_id == None,  # noqa: E711

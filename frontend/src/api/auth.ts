@@ -63,6 +63,7 @@ export const adminDeleteUser = (userId: number) =>
 
 export interface AdminSettings {
   registration_enabled: string
+  allowed_attachment_types: string  // comma-separated MIME types e.g. "image/*,application/pdf"
 }
 
 export const adminGetSettings = () =>
@@ -86,5 +87,13 @@ export interface AdminStats {
 export const adminGetStats = () =>
   api.get<AdminStats>('/admin/stats').then(r => r.data)
 
-export const adminUpdateSettings = (data: { registration_enabled?: boolean }) =>
+export const adminUpdateSettings = (data: { registration_enabled?: boolean; allowed_attachment_types?: string }) =>
   api.patch<AdminSettings>('/admin/settings', data).then(r => r.data)
+
+export interface AppSettings {
+  timezone: string
+  allowed_attachment_types: string
+}
+
+export const getAppSettings = () =>
+  api.get<AppSettings>('/settings').then(r => r.data)

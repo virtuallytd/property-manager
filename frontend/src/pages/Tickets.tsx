@@ -2,7 +2,7 @@ import { useContext, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Ticket as TicketIcon, Wrench, CalendarClock } from 'lucide-react'
+import { FileText, Paperclip, Plus, Ticket as TicketIcon, Wrench, CalendarClock, X } from 'lucide-react'
 import {
   type TicketCategory,
   type TicketPriority,
@@ -14,6 +14,7 @@ import {
   createTicket,
   listTickets,
 } from '../api/tickets'
+import { getAppSettings } from '../api/auth'
 import { listProperties } from '../api/properties'
 import { myProperties } from '../api/tenancies'
 import { AuthContext } from '../contexts/AuthContext'
@@ -60,11 +61,14 @@ function NewTicketModal({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
+  const { data: appSettings } = useQuery({ queryKey: ['app-settings'], queryFn: getAppSettings })
+  const acceptAttr = appSettings?.allowed_attachment_types ?? 'image/*,application/pdf'
   const [propertyId, setPropertyId] = useState<number | ''>(properties.length === 1 ? properties[0].id : '')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<TicketCategory>('general')
   const [priority, setPriority] = useState<TicketPriority>('medium')
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -75,7 +79,7 @@ function NewTicketModal({
         ticket_type: 'maintenance',
         category,
         priority,
-      }),
+      }, attachedFiles.length ? attachedFiles : undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
       toast.success('Request submitted')
@@ -150,6 +154,62 @@ function NewTicketModal({
               onChange={e => setDescription(e.target.value)}
               placeholder="Any additional details…"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-2">
+              Attachments <span className="text-slate-400">(optional)</span>
+            </label>
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {attachedFiles.map((f, i) => (
+                  <div key={i} className="relative group">
+                    {f.type.startsWith('image/') ? (
+                      <div className="relative h-16 w-16 rounded-lg overflow-hidden border border-slate-200">
+                        <img
+                          src={URL.createObjectURL(f)}
+                          alt={f.name}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}
+                          className="absolute top-0.5 right-0.5 rounded-full bg-black/50 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                        <FileText size={11} />
+                        {f.name}
+                        <button
+                          type="button"
+                          onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}
+                        >
+                          <X size={11} className="text-slate-400 hover:text-slate-700" />
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500 hover:border-violet-400 hover:text-violet-600 transition-colors">
+              <Paperclip size={13} />
+              Add files
+              <input
+                type="file"
+                multiple
+                accept={acceptAttr}
+                className="hidden"
+                onChange={e => {
+                  const picked = e.target.files ? Array.from(e.target.files) : []
+                  e.target.value = ''
+                  setAttachedFiles(prev => [...prev, ...picked])
+                }}
+              />
+            </label>
           </div>
         </div>
 

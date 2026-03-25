@@ -17,4 +17,5 @@ class AppSetting(Base):
 DEFAULTS = {
     "timezone": "UTC",
     "registration_enabled": "true",
+    "allowed_attachment_types": "image/*,application/pdf",
 }

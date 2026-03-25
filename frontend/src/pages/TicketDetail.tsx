@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Building2, Send } from 'lucide-react'
+import { ArrowLeft, Building2, FileText, Paperclip, Send, X } from 'lucide-react'
 import {
   type TicketStatus,
   type VisitResponse,
@@ -16,6 +16,7 @@ import {
   respondToVisit,
   updateTicketStatus,
 } from '../api/tickets'
+import { getAppSettings } from '../api/auth'
 import { AuthContext } from '../contexts/AuthContext'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -123,11 +124,15 @@ export default function TicketDetail() {
   const { user } = useContext(AuthContext)
   const queryClient = useQueryClient()
   const [commentBody, setCommentBody] = useState('')
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
 
   const { data: ticket, isLoading } = useQuery({
     queryKey: ['ticket', ticketId],
     queryFn: () => getTicket(ticketId),
   })
+
+  const { data: appSettings } = useQuery({ queryKey: ['app-settings'], queryFn: getAppSettings })
+  const acceptAttr = appSettings?.allowed_attachment_types ?? 'image/*,application/pdf'
 
   useEffect(() => {
     if (ticket) {
@@ -149,10 +154,11 @@ export default function TicketDetail() {
   })
 
   const commentMutation = useMutation({
-    mutationFn: () => addComment(ticketId, commentBody),
+    mutationFn: () => addComment(ticketId, commentBody, attachedFiles.length ? attachedFiles : undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] })
       setCommentBody('')
+      setAttachedFiles([])
     },
     onError: () => toast.error('Failed to add comment'),
   })
@@ -234,6 +240,32 @@ export default function TicketDetail() {
           <p className="text-sm text-slate-600 whitespace-pre-wrap">{ticket.description}</p>
         )}
 
+        {/* Ticket-level attachments */}
+        {ticket.attachments.length > 0 && (
+          <div className="space-y-2 pt-1">
+            <p className="text-xs font-medium text-slate-500">Attachments</p>
+            <div className="flex flex-wrap gap-2">
+              {ticket.attachments.map(a => (
+                a.content_type.startsWith('image/') ? (
+                  <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="block h-20 w-20 rounded-lg overflow-hidden border border-slate-200 hover:opacity-80 transition-opacity">
+                    <img src={a.url} alt={a.original_filename} className="h-full w-full object-cover" />
+                  </a>
+                ) : (
+                  <a
+                    key={a.id}
+                    href={a.url}
+                    download={a.original_filename}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <FileText size={13} />
+                    {a.original_filename}
+                  </a>
+                )
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Landlord status control */}
         {isLandlordOrAdmin && (
           <div className="flex items-center gap-3 pt-1 border-t border-slate-100">
@@ -293,6 +325,27 @@ export default function TicketDetail() {
                 <div className={`rounded-xl px-4 py-2.5 text-sm ${isOwn ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-800'}`}>
                   {c.body}
                 </div>
+                {c.attachments.length > 0 && (
+                  <div className="space-y-1 pt-0.5">
+                    {c.attachments.map(a => (
+                      a.content_type.startsWith('image/') ? (
+                        <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
+                          <img src={a.url} alt={a.original_filename} className="max-w-xs rounded-lg border border-slate-200 object-cover" />
+                        </a>
+                      ) : (
+                        <a
+                          key={a.id}
+                          href={a.url}
+                          download={a.original_filename}
+                          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs ${isOwn ? 'bg-violet-500 text-white' : 'bg-slate-200 text-slate-700'} hover:opacity-80`}
+                        >
+                          <FileText size={12} />
+                          {a.original_filename}
+                        </a>
+                      )
+                    ))}
+                  </div>
+                )}
                 <p className={`text-xs text-slate-400 ${isOwn ? 'text-right' : ''}`}>
                   @{c.author.username} · {formatDateShort(c.created_at)}
                 </p>
@@ -307,27 +360,78 @@ export default function TicketDetail() {
             <div className="h-7 w-7 shrink-0 rounded-full bg-violet-700 flex items-center justify-center text-xs font-semibold text-white uppercase">
               {user?.username.charAt(0)}
             </div>
-            <div className="flex-1 flex gap-2">
-              <textarea
-                className="input flex-1 resize-none text-sm"
-                rows={2}
-                placeholder="Write a comment…"
-                value={commentBody}
-                onChange={e => setCommentBody(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    if (commentBody.trim()) commentMutation.mutate()
-                  }
-                }}
-              />
-              <button
-                className="btn btn-primary self-end px-3"
-                onClick={() => commentMutation.mutate()}
-                disabled={commentMutation.isPending || !commentBody.trim()}
-              >
-                <Send size={14} />
-              </button>
+            <div className="flex-1 space-y-2">
+              {/* File thumbnails / chips */}
+              {attachedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {attachedFiles.map((f, i) => (
+                    f.type.startsWith('image/') ? (
+                      <div key={i} className="relative group h-16 w-16 rounded-lg overflow-hidden border border-slate-200">
+                        <img src={URL.createObjectURL(f)} alt={f.name} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}
+                          className="absolute top-0.5 right-0.5 rounded-full bg-black/50 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span key={i} className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                        <FileText size={11} />
+                        {f.name}
+                        <button type="button" onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))}>
+                          <X size={11} className="text-slate-400 hover:text-slate-600" />
+                        </button>
+                      </span>
+                    )
+                  ))}
+                  <label className="inline-flex items-center justify-center h-16 w-16 cursor-pointer rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-violet-400 hover:text-violet-500 transition-colors">
+                    <Paperclip size={16} />
+                    <input type="file" multiple accept={acceptAttr} className="hidden" onChange={e => { const picked = e.target.files ? Array.from(e.target.files) : []; e.target.value = ''; setAttachedFiles(prev => [...prev, ...picked]) }} />
+                  </label>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <textarea
+                  className="input flex-1 resize-none text-sm"
+                  rows={2}
+                  placeholder="Write a comment…"
+                  value={commentBody}
+                  onChange={e => setCommentBody(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      if (commentBody.trim() || attachedFiles.length) commentMutation.mutate()
+                    }
+                  }}
+                />
+                <div className="flex flex-col gap-2 self-end">
+                  {attachedFiles.length === 0 && (
+                    <label className="btn px-3 cursor-pointer" title="Attach files">
+                      <Paperclip size={14} />
+                      <input
+                        type="file"
+                        multiple
+                        accept={acceptAttr}
+                        className="hidden"
+                        onChange={e => {
+                          const picked = e.target.files ? Array.from(e.target.files) : []
+                          e.target.value = ''
+                          setAttachedFiles(prev => [...prev, ...picked])
+                        }}
+                      />
+                    </label>
+                  )}
+                  <button
+                    className="btn btn-primary px-3"
+                    onClick={() => commentMutation.mutate()}
+                    disabled={commentMutation.isPending || (!commentBody.trim() && !attachedFiles.length)}
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
