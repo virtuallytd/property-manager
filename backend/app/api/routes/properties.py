@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_landlord, get_current_tenant
+from app.api.deps import get_current_landlord, get_current_tenant, get_current_user
 from app.config import settings
 from app.db.session import get_db
 from app.models.property import Property
@@ -97,11 +97,25 @@ def my_properties(
 def get_property(
     property_id: int,
     db: Session = Depends(get_db),
-    landlord: User = Depends(get_current_landlord),
+    current_user: User = Depends(get_current_user),
 ):
-    prop = db.query(Property).filter(Property.id == property_id, Property.landlord_id == landlord.id).first()
+    from app.models.user import UserRole
+    prop = db.query(Property).filter(Property.id == property_id).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
+    if current_user.role == UserRole.ADMIN:
+        return _to_out(prop, db)
+    if current_user.role == UserRole.LANDLORD:
+        if prop.landlord_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        return _to_out(prop, db)
+    # Tenant: must have a tenancy on this property
+    tenancy = db.query(Tenancy).filter(
+        Tenancy.property_id == property_id,
+        Tenancy.tenant_id == current_user.id,
+    ).first()
+    if not tenancy:
+        raise HTTPException(status_code=403, detail="Access denied")
     return _to_out(prop, db)
 
 

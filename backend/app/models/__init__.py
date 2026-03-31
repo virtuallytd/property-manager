@@ -4,6 +4,7 @@ from app.models.settings import AppSetting
 from app.models.property import Property, PropertyType
 from app.models.tenancy import Tenancy, PropertyInvite, LandlordTenant
 from app.models.ticket import Ticket, TicketAttachment, TicketComment, TicketRead, TicketType, TicketCategory, TicketStatus, TicketPriority, VisitResponse
+from app.models.document import PropertyDocument, DocumentType
 
 __all__ = [
     "Base",
@@ -24,4 +25,6 @@ __all__ = [
     "VisitResponse",
     "TicketAttachment",
     "TicketRead",
+    "PropertyDocument",
+    "DocumentType",
 ]

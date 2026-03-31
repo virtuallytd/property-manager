@@ -10,7 +10,7 @@ from app.core.security import hash_password
 from app.db.session import engine, SessionLocal
 from app.models import Base
 from app.models.user import User, UserRole
-from app.api.routes import auth, admin, properties, tenancies, tenants, tickets
+from app.api.routes import auth, admin, properties, tenancies, tenants, tickets, documents
 from app.api.routes import settings as settings_routes
 
 logging.basicConfig(level=logging.INFO)
@@ -68,6 +68,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(properties.router, prefix="/api/properties", tags=["properties"])
 app.include_router(tenancies.router, prefix="/api/properties", tags=["tenancies"])
+app.include_router(documents.router, prefix="/api/properties", tags=["documents"])
 app.include_router(tenants.router, prefix="/api/tenants", tags=["tenants"])
 app.include_router(tickets.router, prefix="/api/tickets", tags=["tickets"])
 app.include_router(settings_routes.router, prefix="/api/settings", tags=["settings"])

@@ -195,8 +195,9 @@ function PropertyCard({ property, onEdit, onDelete }: { property: Property; onEd
 // ─── Tenant: my property card ─────────────────────────────────────────────────
 
 function MyPropertyCard({ property }: { property: MyProperty }) {
+  const navigate = useNavigate()
   return (
-    <div className="card p-5 flex flex-col gap-4">
+    <div className="card p-5 flex flex-col gap-4 cursor-pointer hover:border-violet-200 transition-colors" onClick={() => navigate(`/properties/${property.property_id}`)}>
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100">
           <Building2 size={20} className="text-slate-500" />
@@ -260,7 +261,7 @@ function LandlordProperties() {
   const closeModal = () => { setModalOpen(false); setEditing(undefined) }
 
   const handleDelete = (p: Property) => {
-    if (!window.confirm(`Delete "${p.name}"? This cannot be undone.`)) return
+    if (!window.confirm(`Delete "${p.name}"?\n\nThis cannot be undone.`)) return
     deleteMutation.mutate(p.id)
   }
 

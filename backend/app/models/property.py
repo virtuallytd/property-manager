@@ -32,3 +32,4 @@ class Property(Base):
     tenancies = relationship("Tenancy", back_populates="property", cascade="all, delete-orphan")
     invites = relationship("PropertyInvite", back_populates="property", cascade="all, delete-orphan")
     tickets = relationship("Ticket", back_populates="property", cascade="all, delete-orphan")
+    documents = relationship("PropertyDocument", back_populates="property", cascade="all, delete-orphan", order_by="PropertyDocument.created_at")
